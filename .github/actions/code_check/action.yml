@@ -1,0 +1,17 @@
+name: code_check
+description: Perform Code checks
+runs:
+  using: composite
+  steps:
+    - name: Code Checks
+      shell: bash
+      run: |
+        cd ${GITHUB_WORKSPACE}
+        source python-workflow-venv/bin/activate
+        pip install -e beamme[dev,fourc]@git+ssh://git@github.com:beamme-py/beamme.git@main
+        pre-commit install --install-hooks
+        if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+          SKIP=no-commit-to-branch pre-commit run --all-files
+        else
+          pre-commit run --all-files
+        fi
