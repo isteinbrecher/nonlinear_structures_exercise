@@ -13,7 +13,6 @@
 # ---
 
 # %% [markdown]
-# # Large rotations
 # $
 # % Define TeX macros for this document
 # \def\vv#1{\boldsymbol{#1}}
@@ -22,6 +21,9 @@
 # \def\SO{SO(3)}
 # \def\triad{\mm{\Lambda}}
 # $
+
+# %% [markdown]
+# # Large rotations
 #
 # We will use the large rotation framework implemented in the beam finite element input generator [**BeamMe**](https://github.com/beamme-py/beamme).
 # BeamMe provides a `Rotation` class that encapsulates various representations of rotations (rotation matrices, rotation vectors, quaternions, etc.) and methods for converting between them, composing rotations, and applying rotations to vectors.
@@ -45,11 +47,13 @@ from beamme.core.rotation import Rotation
 # </div>
 
 # %%
-# Insert code for Exercise 1.1 here
-rotation = Rotation([0.0, 0.0, 1.0], np.pi / 2)
-print("Quaternion:", rotation.get_quaternion())
-print("Rotation matrix:", rotation.get_rotation_matrix())
-print("Rotation vector:", rotation.get_rotation_vector())
+# === SOLUTION START: Ex 1.1 ===
+rotation_z90 = Rotation([0.0, 0.0, 1.0], np.pi / 2)
+
+print("Quaternion:\n", rotation_z90.get_quaternion())
+print("Rotation matrix:\n", rotation_z90.get_rotation_matrix())
+print("Rotation vector:\n", rotation_z90.get_rotation_vector())
+# === SOLUTION END: Ex 1.1 ===
 
 # %% [markdown]
 # <div class="alert alert-info" role="alert">
@@ -61,9 +65,10 @@ print("Rotation vector:", rotation.get_rotation_vector())
 # %%
 a = [1.0, 0.0, 0.0]
 
-# Insert code for Exercise 1.2 here
-rotated_a = rotation * a
-print("Rotated vector:", rotated_a)
+# === SOLUTION START: Ex 1.2 ===
+rotated_a = rotation_z90 * a
+print("Rotated vector:\n", rotated_a)
+# === SOLUTION END: Ex 1.2 ===
 
 # %% [markdown]
 # <div class="alert alert-info" role="alert">
@@ -75,17 +80,19 @@ print("Rotated vector:", rotated_a)
 # </div>
 
 # %%
-# Insert code for Exercise 1.3 here
-lambda_1 = Rotation([1.0, 0.0, 0.0], np.pi / 4)
-lambda_2 = Rotation([0.0, 1.0, 0.0], np.pi / 6)
-lambda_composed = lambda_2 * lambda_1
-print("Composed rotation vector:\n", lambda_composed.get_rotation_vector())
+# === SOLUTION START: Ex 1.3 ===
+lambda_1 = Rotation([1.0, 0.0, 0.0], np.pi / 4)  # 45° about x
+lambda_2 = Rotation([0.0, 1.0, 0.0], np.pi / 6)  # 30° about y
 
-lambda_composed_reordered = lambda_1 * lambda_2
-print(
-    "Reordered composed rotation vector:\n",
-    lambda_composed_reordered.get_rotation_vector(),
-)
+# Apply lambda_1 first, then lambda_2:
+lambda_21 = lambda_2 * lambda_1
+print("Composed (apply 1 then 2) rotation vector:\n", lambda_21.get_rotation_vector())
+
+# Reordered: apply lambda_2 first, then lambda_1:
+lambda_12 = lambda_1 * lambda_2
+print("Reordered (apply 2 then 1) rotation vector:\n", lambda_12.get_rotation_vector())
+# Comment: The two rotation vectors are different, demonstrating the non-commutative nature of finite rotations.
+# === SOLUTION END: Ex 1.3 ===
 
 # %% [markdown]
 # <div class="alert alert-info" role="alert">
@@ -110,21 +117,26 @@ angle = np.pi / 3
 axis = [1.0, 1.0, 0.0]
 a = [1.0, 0.2, -0.1]
 
-# Insert code for Exercise 1.4 here
-rotation = Rotation(axis, angle)
-inverse_rotation = rotation.inv()
-print("Original rotation vector:", rotation.get_rotation_vector())
-print("Inverse rotation vector:", inverse_rotation.get_rotation_vector())
-# The resulting rotation vectors are pointing in opposite directions with the same magnitude.
+# === SOLUTION START: Ex 1.4 ===
+rotation_axis60 = Rotation(axis, angle)
+rotation_axis60_inv = rotation_axis60.inv()
 
-rotated_a = rotation * a
-restored_a = inverse_rotation * rotated_a
-print("Restored vector a:", restored_a)
+print("Rotation vector (lambda):\n", rotation_axis60.get_rotation_vector())
+print("Rotation vector (lambda^{-1}):\n", rotation_axis60_inv.get_rotation_vector())
+# Comment: the inverse corresponds to the opposite rotation, thus the rotation vector
+# has the same magnitude but opposite direction.
 
-composition_1 = inverse_rotation * rotation
-composition_2 = rotation * inverse_rotation
-print("Composition 1 rotation matrix:", composition_1.get_rotation_matrix())
-print("Composition 2 rotation matrix:", composition_2.get_rotation_matrix())
+rotated_a = rotation_axis60 * a
+restored_a = rotation_axis60_inv * rotated_a
+print("Original a:\n", a)
+print("Restored a (lambda^{-1} * lambda * a):\n", restored_a)
+# Comment: the original vector is recovered.
+
+composition_left = rotation_axis60_inv * rotation_axis60
+composition_right = rotation_axis60 * rotation_axis60_inv
+print("lambda^{-1} * lambda", composition_left)
+print("lambda * lambda^{-1}", composition_right)
+# === SOLUTION END: Ex 1.4 ===
 
 # %% [markdown]
 # <div class="alert alert-info" role="alert">
@@ -146,33 +158,40 @@ print("Composition 2 rotation matrix:", composition_2.get_rotation_matrix())
 #   3. Verify the relation (2.16), i.e., $\Delta \vv{\theta} = \triad(\vv{\psi}_1) \Delta \vv{\Theta}$.
 #   4. Check if the relation (2.22), $\delta \vv{\psi} = \mm{T}(\vv{\psi}) \delta \vv{\theta}$ holds for the given values. Comment on the result.
 #
-#   *Hint**: You may use the `get_transformation_matrix()` method of the `Rotation` class to compute the transformation matrix $\mm{T}(\vv{\psi})$.
+#   *Hint:* You may use the `get_transformation_matrix()` method of the `Rotation` class to compute the transformation matrix $\mm{T}(\vv{\psi})$.
 # </div>
 
 # %%
 psi_1 = np.array([0.1, 0.2, 0.3])
 delta_psi = np.array([0.01, -0.02, 0.03])
 
-# Insert code for Exercise 1.5 here
+# === SOLUTION START: Ex 1.5 ===
 psi_2 = psi_1 + delta_psi
-print("psi_2:", psi_2)
+print("psi_2:\n", psi_2)
 
 rotation_1 = Rotation.from_rotation_vector(psi_1)
 rotation_2 = Rotation.from_rotation_vector(psi_2)
 
-left_relative_rotation = rotation_2 * rotation_1.inv()
-delta_theta_left = left_relative_rotation.get_rotation_vector()
-print("Left multiplicative rotation vector increment:", delta_theta_left)
+# Left multiplicative increment: rot_2 = rot(dtheta_left) * rot_1
+left_relative = rotation_2 * rotation_1.inv()
+delta_theta_left = left_relative.get_rotation_vector()
+print("Delta theta (left):\n", delta_theta_left)
 
-right_relative_rotation = rotation_1.inv() * rotation_2
-delta_theta_right = right_relative_rotation.get_rotation_vector()
-print("Right multiplicative rotation vector increment:", delta_theta_right)
+# Right multiplicative increment: rot_2 = rot_1 * rot(dTheta_right)
+right_relative = rotation_1.inv() * rotation_2
+delta_theta_right = right_relative.get_rotation_vector()
+print("Delta Theta (right):\n", delta_theta_right)
 
-print(
-    "Left multiplicative rotation vector increment via (2.16):",
-    rotation_1 * delta_theta_right,
-)
+# Verify (2.16): Delta theta = triad(psi_1) * Delta Theta  (depending on conventions)
+delta_theta_left_from_right = rotation_1 * delta_theta_right
+print("Delta theta from (2.16) using right increment:\n", delta_theta_left_from_right)
 
-delta_psi_via_transformation = rotation_1.get_transformation_matrix() @ delta_theta_left
-print("Delta psi via transformation matrix:", delta_psi_via_transformation)
-# The result is close to delta_psi, but not exactly. The relation only holds for infinitesimal increments, however, the given increment is finite.
+# Check transformation relation
+T = rotation_1.get_transformation_matrix()
+delta_psi_via_T = T @ delta_theta_left
+print("Delta psi via T(psi_1) * Delta theta:\n", delta_psi_via_T)
+
+err = np.linalg.norm(delta_psi_via_T - delta_psi)
+print("||Delta psi via T - Delta psi||:\n", err)
+# Comment: The reason for the missmatch is that relation (2.22) is only valid for infinitesimal increments.
+# === SOLUTION END: Ex 1.5 ===
