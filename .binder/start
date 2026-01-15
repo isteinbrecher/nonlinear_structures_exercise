@@ -21,12 +21,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# Remove the non-student notebooks
-set -e
-echo "Try to removed non-student notebooks."
-find . -type f -name "*.ipynb" ! -name "*_student.ipynb" -delete
-echo "Removed non-student notebooks."
-
 # Copied from https://mybinder.org/v2/gh/pyvista/pyvista-examples/master
 export PYVISTA_TRAME_SERVER_PROXY_PREFIX="$JUPYTERHUB_SERVICE_PREFIX/proxy/"
 exec "$@"
