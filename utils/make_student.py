@@ -1,5 +1,5 @@
-"""Create "student" versions from master files by stripping SOLUTION blocks and
-keeping STUDENT blocks.
+"""Create "student" or "teacher" versions from master files by stripping
+blocks.
 
 Supports:
 - .ipynb (via nbformat)
@@ -18,12 +18,18 @@ Markdown:
     <!-- === BLOCK END === -->
 
 Behavior:
-- Inside a SOLUTION block: removed
-- Inside a STUDENT block: kept
-- Marker lines themselves: removed
-- Anything outside blocks: unchanged
-- If a SOLUTION block ends without any STUDENT block appearing before END:
-    replace that SOLUTION content with a placeholder (no extra blank line)
+- target=student (default):
+    - Inside a SOLUTION block: removed
+    - Inside a STUDENT block: kept
+    - Marker lines themselves: removed
+    - Anything outside blocks: unchanged
+    - If a SOLUTION block ends without any STUDENT block appearing before END:
+        replace that SOLUTION content with a placeholder (no extra blank line)
+- target=teacher (--teacher):
+    - Inside a SOLUTION block: kept
+    - Inside a STUDENT block: removed
+    - Marker lines themselves: removed
+    - Anything outside blocks: unchanged
 
 Notes on newlines:
 - Placeholders are stored WITHOUT trailing newline.
@@ -43,6 +49,7 @@ from typing import Iterable, List, Optional
 # Defaults
 # =========================
 DEFAULT_SUFFIX = "_student"
+DEFAULT_TEACHER_SUFFIX = "_teacher"
 
 DEFAULT_CODE_PLACEHOLDER = "# TODO: Implement solution"
 DEFAULT_MD_PLACEHOLDER = "*TODO: Write your answer here.*"
@@ -81,11 +88,12 @@ def strip_blocks(
     code_placeholder: str,
     md_placeholder: str,
     preserve_indent: bool = True,
+    target: str = "student",  # "student" or "teacher"
 ) -> str:
-    """Removes SOLUTION blocks; keeps STUDENT blocks. If SOLUTION exists but
-    STUDENT is missing before END, insert a placeholder.
+    """Strip/keep blocks depending on target.
 
-    mode: "py" or "md"
+    target="student": remove SOLUTION, keep STUDENT (placeholder if no
+    STUDENT). target="teacher": keep SOLUTION, remove STUDENT.
     """
     if mode == "py":
         sol_re, stu_re, end_re = PY_SOLUTION_RE, PY_STUDENT_RE, PY_END_RE
@@ -96,13 +104,16 @@ def strip_blocks(
     else:
         raise ValueError(f"Unknown mode: {mode}")
 
+    keep_solution = target == "teacher"
+    keep_student = target == "student"
+
     lines = text.splitlines(keepends=True)
     out: List[str] = []
 
     state = "OUT"  # OUT, IN_SOLUTION, IN_STUDENT
     saw_student_anywhere = False
 
-    # We'll buffer the first line (and all lines) of the solution region so we can infer indentation
+    # buffer solution region to infer indentation for placeholder insertion
     solution_buffer: List[str] = []
 
     for line in lines:
@@ -126,20 +137,20 @@ def strip_blocks(
                 continue  # drop marker
             if end_re.match(line):
                 # SOLUTION ended without STUDENT (at least for this block)
-                if not saw_student_anywhere:
-                    # Insert placeholder with exactly one newline
+                if (target == "student") and (not saw_student_anywhere):
                     indent = (
                         _extract_indent(solution_buffer[0])
                         if (preserve_indent and solution_buffer)
                         else ""
                     )
                     out.append(f"{indent}{placeholder}\n")
-                # If STUDENT exists somewhere else in file, we still remove SOLUTION silently.
                 state = "OUT"
                 continue  # drop marker
 
-            # collect for indentation inference; content is removed
+            # content line
             solution_buffer.append(line)
+            if keep_solution:
+                out.append(line)
 
         elif state == "IN_STUDENT":
             if end_re.match(line):
@@ -154,7 +165,9 @@ def strip_blocks(
                 # ignore nested student marker
                 saw_student_anywhere = True
                 continue
-            out.append(line)
+
+            if keep_student:
+                out.append(line)
 
     return "".join(out)
 
@@ -164,6 +177,7 @@ def process_text_file(
     dst: Path,
     code_placeholder: str,
     md_placeholder: str,
+    target: str = "student",
 ) -> None:
     """TMP."""
     raw = src.read_text(encoding="utf-8")
@@ -175,6 +189,7 @@ def process_text_file(
             mode="py",
             code_placeholder=code_placeholder,
             md_placeholder=md_placeholder,
+            target=target,
         )
     elif ext in {".md", ".markdown"}:
         cleaned = strip_blocks(
@@ -182,6 +197,7 @@ def process_text_file(
             mode="md",
             code_placeholder=code_placeholder,
             md_placeholder=md_placeholder,
+            target=target,
         )
     else:
         # default to python markers for unknown text types
@@ -190,6 +206,7 @@ def process_text_file(
             mode="py",
             code_placeholder=code_placeholder,
             md_placeholder=md_placeholder,
+            target=target,
         )
 
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -202,6 +219,7 @@ def process_ipynb(
     code_placeholder: str,
     md_placeholder: str,
     drop_empty_cells: bool = True,
+    target: str = "student",
 ) -> None:
     """TMP."""
     try:
@@ -221,6 +239,7 @@ def process_ipynb(
                 mode="py",
                 code_placeholder=code_placeholder,
                 md_placeholder=md_placeholder,
+                target=target,
             )
         elif cell.cell_type == "markdown":
             cell.source = strip_blocks(
@@ -228,6 +247,7 @@ def process_ipynb(
                 mode="md",
                 code_placeholder=code_placeholder,
                 md_placeholder=md_placeholder,
+                target=target,
             )
 
         if (
@@ -244,14 +264,14 @@ def process_ipynb(
     nbformat.write(nb, str(dst))
 
 
-def build_dst_path(src: Path, out: Optional[Path]) -> Path:
+def build_dst_path(src: Path, out: Optional[Path], suffix: str) -> Path:
     """If out is a directory, place file there.
 
     If out is a file path, use it. If out is None, create alongside src
-    with DEFAULT_SUFFIX inserted before extension.
+    with suffix inserted before extension.
     """
     if out is None:
-        return src.with_name(src.stem + DEFAULT_SUFFIX + src.suffix)
+        return src.with_name(src.stem + suffix + src.suffix)
 
     if out.exists() and out.is_dir():
         return out / src.name
@@ -278,7 +298,7 @@ def iter_inputs(paths: List[str]) -> Iterable[Path]:
 def main() -> None:
     """TMP."""
     ap = argparse.ArgumentParser(
-        description="Strip solution blocks and create student versions."
+        description="Strip blocks and create student/teacher versions."
     )
     ap.add_argument("inputs", nargs="+", help="Input file(s) or directories.")
     ap.add_argument(
@@ -299,20 +319,28 @@ def main() -> None:
         default=DEFAULT_MD_PLACEHOLDER,
         help="Placeholder inserted when STUDENT block is missing (markdown).",
     )
-    args = ap.parse_args()
+    ap.add_argument(
+        "--teacher",
+        action="store_true",
+        help="Create teacher versions (keep SOLUTION blocks, strip STUDENT blocks).",
+    )
 
+    args = ap.parse_args()
     out_path = Path(args.out) if args.out else None
 
     # Normalize placeholders (avoid accidental extra blank lines)
     code_placeholder = _normalize_placeholder(args.code_placeholder)
     md_placeholder = _normalize_placeholder(args.md_placeholder)
 
+    target = "teacher" if args.teacher else "student"
+    suffix = DEFAULT_TEACHER_SUFFIX if args.teacher else DEFAULT_SUFFIX
+
     for src in iter_inputs(args.inputs):
         if not src.exists():
             print(f"[skip] not found: {src}", file=sys.stderr)
             continue
 
-        dst = build_dst_path(src, out_path)
+        dst = build_dst_path(src, out_path, suffix)
 
         try:
             if src.suffix.lower() == ".ipynb":
@@ -322,6 +350,7 @@ def main() -> None:
                     code_placeholder=code_placeholder,
                     md_placeholder=md_placeholder,
                     drop_empty_cells=not args.keep_empty_cells,
+                    target=target,
                 )
             else:
                 process_text_file(
@@ -329,6 +358,7 @@ def main() -> None:
                     dst,
                     code_placeholder=code_placeholder,
                     md_placeholder=md_placeholder,
+                    target=target,
                 )
             print(f"[ok] {src} -> {dst}")
         except Exception as e:
