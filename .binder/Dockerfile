@@ -34,13 +34,13 @@ USER root
 RUN chmod 777 -R /home/user
 
 USER ubuntu
-COPY --chown=ubuntu . /home/ubuntu/nonlinear_structures_exercise
+COPY --chown=ubuntu . /home/ubuntu/geometrically_exact_beam_theory_exercises
 
 WORKDIR /home/ubuntu
 
 RUN python3 -m venv beamme-env
 RUN . beamme-env/bin/activate && pip install --upgrade pip
-WORKDIR /home/ubuntu/nonlinear_structures_exercise
+WORKDIR /home/ubuntu/geometrically_exact_beam_theory_exercises
 RUN pwd
 RUN ls -l
 ENV PATH="/home/ubuntu/beamme-env/bin:$PATH"
