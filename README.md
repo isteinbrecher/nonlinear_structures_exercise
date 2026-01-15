@@ -8,7 +8,7 @@ The exercises are provided as **Jupyter notebooks**, which are intended to be ru
 
 You can run the notebooks directly in your browser using Binder (no local installation required):
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/isteinbrecher/nonlinear_structures_exercise/main)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/isteinbrecher/geometrically_exact_beam_theory_exercises/main)
 
 ### Notes on using Binder
 - When opening a notebook via the Binder link for the first time, the environment may take a few minutes to start.
