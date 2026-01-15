@@ -146,6 +146,7 @@ def run_four_c(
         output_strains=True,
     )
     input_file["IO/RUNTIME VTK OUTPUT/BEAMS"]["MATERIAL_FORCES_GAUSSPOINT"] = True
+    input_file["IO/RUNTIME VTK OUTPUT/BEAMS"]["NUMBER_SUBSEGMENTS"] = 1
     input_file["IO/MONITOR STRUCTURE DBC"] = {
         "INTERVAL_STEPS": 1,
         "WRITE_CONDITION_INFORMATION": True,
@@ -320,6 +321,7 @@ def plot_beam_2d(simulation_name):
             ax0.plot(
                 grid_points[state["step"], :, 0],
                 grid_points[state["step"], :, 1],
+                "-o",
                 linewidth=3,
             )
             ax0.set_title(f"Beam configuration in space at time {steps[step]:.3f}")
@@ -340,9 +342,10 @@ def plot_beam_2d(simulation_name):
                 fig.add_subplot(gs[1, 1]),
                 fig.add_subplot(gs[2, 1]),
             ]
+            color = ["b", "g", "r"]
             for i, (name, data) in enumerate(cell_data.items()):
                 data = data[state["step"]]
-                ax[i].plot(data[:, 0], data[:, 1])
+                ax[i].plot(data[:, 0], data[:, 1], f"{color[i]}x-")
                 data_no_nan = data[~np.isnan(data[:, 1]), 1]
                 y_bounds = [
                     np.min([0.0, np.min(data_no_nan)]),
