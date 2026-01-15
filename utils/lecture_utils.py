@@ -173,7 +173,7 @@ def run_four_c(
     with open(simulation_directory / f"{simulation_name}.log", "w") as logfile:
         # Command to run 4C
         if is_mybinder():
-            four_c_exe = "/home/user/4C/build/4C"
+            four_c_exe = "/home/user/4C/bin/4C"
         else:
             four_c_exe = "/data/a11bivst/dev/4C/release/4C"
         command = [four_c_exe, input_file_path.absolute(), simulation_name]
